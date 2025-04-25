@@ -28,8 +28,6 @@ find_package(Clang REQUIRED CONFIG)
 message(STATUS "Found Clang ${CLANG_VERSION}")
 message(STATUS "Clang include dir: ${CLANG_INCLUDE_DIRS}")
 
-set(CLANG_CPP_LIBRARY ${CLANG_INCLUDE_DIRS}/c++/v1 PARENT_SCOPE)
-
 add_executable(RttrAutoRegister
         src/main.cpp
         src/register.h

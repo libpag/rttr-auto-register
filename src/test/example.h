@@ -1,11 +1,11 @@
 #pragma once
 
 #include <memory>
-#include <rttrGeneratorMacro.h>
+#include "./third/rttrGeneratorMacro.h"
+using namespace std;
 namespace Outer{
     namespace Inner {
-        enum class MyEnum {
-            REGISTER_ENUM
+        enum class REGISTER_ENUM MyEnum {
             VALUE1,
             VALUE2,
             VALUE3
@@ -13,14 +13,21 @@ namespace Outer{
     }
 }
 
-class base{
-    REGISTER_CLASS()
+namespace Outer{
+    namespace Inner {
+        enum REGISTER_ENUM MyEnum1 {
+            VALUE1,
+            VALUE2,
+            VALUE3
+        };
+    }
+}
+
+class REGISTER_CLASS base{
 };
 
-class derived : public base{
-    REGISTER_CLASS(base)
+class REGISTER_CLASS derived : public base{
 
-    REGISTER_PROPERTY
     int derivedvalue;
 
 };
@@ -28,55 +35,71 @@ class derived : public base{
 
 namespace Outer {
     namespace Inner {
-        class MyClass {
-            REGISTER_CLASS()
+        class REGISTER_CLASS MyClass {
 
-            REGISTER_PROPERTY
             int value;
-            REGISTER_PROPERTY
             int value1;
-            REGISTER_PROPERTY
       
 
             int value2;
-            REGISTER_PROPERTY
             int value3;
-            REGISTER_PROPERTY_READONLY
             //comment test
             int readOnlyvalue;
-            REGISTER_PROPERTY_READONLY
             /*comment test*/
             int readOnlyvalue1;
-            REGISTER_PROPERTY_READONLY
             int readOnlyvalue2;
-            REGISTER_PROPERTY_READONLY
             int readOnlyvalue3;
-            REGISTER_PROPERTY
             int value4;
-            REGISTER_PROPERTY 
             std::shared_ptr<int> shareptr;
+public:
+			MAKE_FUNCTION(hhh)
         };
     }
 }
 
-class GlobalClass {
-    REGISTER_CLASS();
+class REGISTER_CLASS GlobalClass {
     void func();
 };
 
 namespace Outer {
-    class Container {
+    class REGISTER_CLASS Container {
     public:
         class NestedClass {
-            REGISTER_CLASS(NestedClass)
             int value;
         };
     };
 }
 
 struct OuterStruct {
-    class InnerClass {
-        REGISTER_CLASS()
+    class REGISTER_CLASS InnerClass {
         void func();
+private:
+MAKE_FUNCTION(hhh)
+    };
+};
+
+
+struct test{
+    struct REGISTER_CLASS testStruct{
+        public:
+        float c;
+        float d;
+        private:
+        int a;
+        int b;
+        void print();
+    };
+};
+
+struct test1{
+    class REGISTER_CLASS testStruct1{
+        public:
+        float c;
+        float d;
+        private:
+        int a;
+        int b;
+        float* f;
+        void print();
     };
 };

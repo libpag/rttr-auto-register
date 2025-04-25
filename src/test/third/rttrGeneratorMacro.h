@@ -18,10 +18,9 @@
 
 #pragma once
 
-
-#define REGISTER_CLASS(...)
-
-#define REGISTER_PROPERTY
-#define REGISTER_PROPERTY_READONLY
+#define REGISTER_ENUM
 
 #define REGISTER_ENUM
+#define REGISTER_CLASS
+
+#define MAKE_FUNCTION(name) void name##_functionRTTR() const {}

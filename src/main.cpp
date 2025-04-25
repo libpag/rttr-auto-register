@@ -4,76 +4,84 @@
 #include <filesystem>
 #include <fstream>
 #include "register.h"
+#include "CLI11.hpp"
 
 namespace fs = std::filesystem;
 
+void GenerateHeaderFiles(std::vector<std::string> searchPaths,
+                         std::vector<std::string>& headFiles) {
+  for (const auto& searchPath : searchPaths) {
+    Register::GetHeaderFiles(searchPath, headFiles);
+  }
+}
+void SetArgs(std::vector<std::string> includePaths, std::vector<const char*>& args) {
+  static std::vector<std::string> tempStrings;
+  tempStrings.clear();
+  for (auto& token : includePaths) {
+    tempStrings.emplace_back(std::string("-I") + token);
+    args.push_back(tempStrings.back().c_str());
+  }
+}
 int main(int argc, char** argv) {
-    std::cout << "argc: " << argc << std::endl;
-    //检查命令行参数
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " <header_file_dir> <output_file> [include_dirs]\n";
-        std::cerr << "Example: " << argv[0] << " /path/to /path/to/output.cpp /path/include /path1/include\n";
-        return 1;
-    }
+    CLI::App app{"RTTR AUTO REGISTER"};
 
-    // 获取并验证输入文件
-    fs::path header_file_dir = fs::absolute(argv[1]);
-    if (!fs::exists(header_file_dir)) {
-        std::cerr << "Error: Header file dir '" << header_file_dir << "' does not exist\n";
-        return 1;
-    }
+    std::vector<std::string> searchPaths;
+    app.add_option("-s, --search", searchPaths, "Find path list")
+        ->required()
+        ->check(CLI::ExistingDirectory)
+        ->take_all();
+
+    std::string outputFile;
+    app.add_option("-o,--output", outputFile, "Output file")
+        ->required();
+
+    std::vector<std::string> includePaths;
+    app.add_option("-i,--include", includePaths, "Include path list")
+        ->check(CLI::ExistingDirectory)
+        ->take_all();
+
+    CLI11_PARSE(app, argc,  argv);
 
     // 获取输出文件路径
-    fs::path output_file = fs::absolute(argv[2]);
-
-    std::vector<std::string> tokens;
-    for(int i = 3; i < argc; i++) {
-      tokens.push_back(argv[i]);
-    }
-
-
+    fs::path output_file = fs::absolute(outputFile);
 
     std::vector<std::string> headFiles;
-    Register::GetHeaderFiles(header_file_dir, headFiles);
+    GenerateHeaderFiles(searchPaths, headFiles);
 
     try {
         // 初始化 Clang
         Register::ClangIndex index;
         if (!index) {
-            std::cerr << "Failed to create Clang index\n";
-            return 1;
+          std::cerr << "Failed to create Clang index\n";
+          return 1;
         }
 
-        // 解析文件
-        std::vector<const char*> args = {
-            "-x",
-            "c++",
-            "-std=c++17"
-        };
-
-        for(auto& token : tokens) {
-          token = (std::string("-I") + token);
-          std::cout << "Include instruction: " << std::endl;
-          std::cout << token << std::endl;
-          args.push_back(token.c_str());
-        }
+        std::vector<const char*> args = {"-DTGFX_ENABLE_PROFILING", "-x", "c++", "-std=c++17"};
+        SetArgs(includePaths,args);
 
         std::vector<Register::RTTRMarkClassInfo> class_result;
         std::vector<Register::RTTRMarkEnumInfo> enum_result;
         std::vector<std::string> parse_file_rel_path;
+        std::unordered_map<std::string, std::string> def_header_file;
 
         for(const std::string& header_file : headFiles) {
+            std::cout << "Process file : " << header_file << std::endl;
             auto tu = Register::GetTranslationUnit(index, header_file, args);
 
             if (!tu) {
                 std::cerr << "Failed to parse translation unit\n";
                 return 1;
             }
+            //GetClassDefHeaderFileList(*tu, def_header_file);
 
-            // 解析类和枚举
-            auto current_class_result = ParseRttrMarkClass(*tu, "REGISTER_CLASS",
-                "REGISTER_PROPERTY", "REGISTER_PROPERTY_READONLY");
-            auto current_enum_result = ParseRttrMarkEnum(*tu, "REGISTER_ENUM");
+            auto tokenList = Register::GenerateTokenList(*tu);
+            std::vector<Register::RTTRMarkClassInfo> current_class_result;
+            std::vector<Register::RTTRMarkEnumInfo> current_enum_result;
+
+            Register::ParseRttrMarkClass(tokenList, "REGISTER_CLASS",
+              current_class_result);
+            Register::ParseRttrMarkEnum(tokenList, "REGISTER_ENUM",
+              current_enum_result);
 
             if(!current_class_result.empty() || !current_enum_result.empty()) {
                 // 计算相对路径

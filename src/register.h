@@ -20,6 +20,7 @@
 
 #include <filesystem>
 #include <clang-c/Index.h>
+#include <set>
 #include "clangraii/translationUnit.h"
 #include "clangraii/clangIndex.h"
 #include "clangraii/clangString.h"
@@ -30,13 +31,18 @@ namespace Register {
         std::string className;
         std::string path;
         std::vector<std::string> properties;
-        std::vector<std::string> readOnlyProperties;
+        std::vector<std::string> methods;
     };
 
     struct RTTRMarkEnumInfo {
         std::string enumName;
         std::string path;
         std::vector<std::string> elements;
+    };
+
+    struct ForwardDeclInfo {
+      bool isFoundDef = false;
+      std::string defFilePath;
     };
 
     // Token 结构体
@@ -59,19 +65,31 @@ namespace Register {
 
     std::string GetFullQualifiedName(CXCursor cursor);
 
-    std::optional<CXCursor> FindNextMember(const std::vector<Token>& tokens, size_t startIndex);
+    std::optional<CXCursor> FindNextMember(const std::vector<Token>& tokens, size_t startIndex,
+      CXCursorKind kind);
 
-    std::vector<std::string> ProcessProperty(CXCursor cursor, const std::string& property_macro);
+    std::vector<std::string> ProcessProperty(CXCursor cursor, const std::string& property_macro,
+      CXCursorKind kind);
 
-    std::vector<RTTRMarkClassInfo> ParseRttrMarkClass(TranslationUnit& tu, const std::string& mark_macro,
-        const std::string& property_macro, const std::string& readonly_property_macro);
+    std::vector<Token> GenerateTokenList(TranslationUnit& tu);
 
-    std::vector<RTTRMarkEnumInfo> ParseRttrMarkEnum(TranslationUnit& tu, const std::string& mark_macro);
+    void ParseRttrMarkClass(const std::vector<Token>& token_list, const std::string& class_macro,
+        std::vector<RTTRMarkClassInfo>& classInfos);
 
-    void GenerateCPPCode(const std::vector<RTTRMarkClassInfo>& classInfos, const std::vector<RTTRMarkEnumInfo>& enumInfos,
-        const std::string& outputFile, const std::vector<std::string>& relativePaths);
+    void ParseRttrMarkEnum(const std::vector<Token>& token_list, const std::string& enum_macro,
+        std::vector<RTTRMarkEnumInfo>& enumInfos);
+
+    void GenerateCPPCode(const std::vector<RTTRMarkClassInfo> &classInfos,
+        const std::vector<RTTRMarkEnumInfo> &enumInfos, const std::string &outputFile,
+        const std::vector<std::string>& relativePaths);
 
     void GetHeaderFiles(const std::filesystem::path& dir, std::vector<std::string>& files);
 
-    std::vector<std::string> splitBySemicolon(const std::string& str);
+    void GetForwardDecl(TranslationUnit& tu, std::unordered_map<std::string, Register::ForwardDeclInfo>& map);
+
+    void GetClassDefHeaderFileList(TranslationUnit& tu, std::unordered_map<std::string, std::string>& DefList);
+    void GetForwardDeclDefPath(const std::unordered_map<std::string, std::string>& DefList, std::vector<std::string>& path);
+    CXType getUnderlyingType(CXType type);
+    bool typeIsDefined(CXType type);
+    void printDiagnostics(CXTranslationUnit translationUnit);
 }
