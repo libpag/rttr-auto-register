@@ -1,3 +1,15 @@
+#  Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+#
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
+#  except in compliance with the License. You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  unless required by applicable law or agreed to in writing, software distributed under the
+#  license is distributed on an "as is" basis, without warranties or conditions of any kind,
+#  either express or implied. see the license for the specific language governing permissions
+#  and limitations under the license.
+
 cmake_minimum_required(VERSION 3.13)
 project(RttrAutoRegister)
 set(CMAKE_CXX_STANDARD 17)
@@ -13,57 +25,53 @@ endif (MSVC)
 
 if (CMAKE_BUILD_TYPE MATCHES "Debug")
     add_definitions(-DDEBUG)
+else()
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(-ffunction-sections -fdata-sections)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-dead_strip")
+    endif()
 endif ()
 
-# configures the local installation path of the llvm library.
+set(RTTR_INCLUDES vendor/libclang/include)
+set(RTTR_LIBRARIES "")
+
 if (NOT CMAKE_PREFIX_PATH)
-    if (NOT EXISTS ${PROJECT_SOURCE_DIR}/ClANGCMAKE.cfg)
-        file(WRITE ${PROJECT_SOURCE_DIR}/ClANGCMAKE.cfg
-                "set(CMAKE_PREFIX_PATH /opt/homebrew/opt/llvm/lib/cmake/clang)  #put your own clang path here")
-    endif ()
-    include("./ClANGCMAKE.cfg")
-endif ()
-
-find_package(Clang REQUIRED CONFIG)
-message(STATUS "Found Clang ${CLANG_VERSION}")
-message(STATUS "Clang include dir: ${CLANG_INCLUDE_DIRS}")
+    # set your own llvm install path
+    set(CMAKE_PREFIX_PATH "")
+endif()
 
 add_executable(RttrAutoRegister
-        src/main.cpp
-        src/register.h
-        src/register.cpp
-        src/clangraii/clangString.h
-        src/clangraii/translationUnit.h
-        src/clangraii/clangIndex.h
-        src/clangraii/clangDiagnostic.h
+    src/main.cpp
+    src/register.h
+    src/register.cpp
+    src/CLI11.hpp
+    src/clangraii/clangString.h
+    src/clangraii/translationUnit.h
+    src/clangraii/clangIndex.h
+    src/clangraii/clangDiagnostic.h
 )
 
-target_include_directories(RttrAutoRegister PRIVATE
-    ${CLANG_INCLUDE_DIRS}
-)
-
-target_link_libraries(RttrAutoRegister PRIVATE
-    libclang
-)
+file(GLOB CLANG_LIBRARIES "${CMAKE_PREFIX_PATH}/lib/*.a")
+list(APPEND RTTR_LIBRARIES ${CLANG_LIBRARIES})
+list(APPEND RTTR_INCLUDES "${CMAKE_PREFIX_PATH}/include")
 
 if(APPLE)
     find_library(COREFOUNDATION CoreFoundation)
+    list(APPEND RTTR_LIBRARIES "${COREFOUNDATION}")
     find_library(SECURITY Security)
-
-    target_link_libraries(RttrAutoRegister PRIVATE
-        ${COREFOUNDATION}
-        ${SECURITY}
-    )
-    
-    set_target_properties(RttrAutoRegister PROPERTIES
-        INSTALL_RPATH "@loader_path/../lib"
-        BUILD_WITH_INSTALL_RPATH TRUE
-    )
-
-endif()
-
-if(WIN32)
+    list(APPEND RTTR_LIBRARIES "${SECURITY}")
+    find_library(ZLIB z)
+    list(APPEND RTTR_LIBRARIES "${ZLIB}")
+elseif (WIN32)
+    list(APPEND RTTR_LIBRARIES ${CMAKE_SOURCE_DIR}vendor/libclang/win/libclang.dll)
     target_compile_definitions(clang_analyzer PRIVATE
-        _CRT_SECURE_NO_WARNINGS
+            _CRT_SECURE_NO_WARNINGS
     )
 endif()
+
+target_include_directories(RttrAutoRegister PRIVATE ${RTTR_INCLUDES})
+target_link_libraries(RttrAutoRegister PRIVATE ${RTTR_LIBRARIES})
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND strip "$<TARGET_FILE:${PROJECT_NAME}>"
+    COMMENT "Strip debug symbols done on final binary.")

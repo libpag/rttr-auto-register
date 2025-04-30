@@ -1,0 +1,5 @@
+THIRD-PARTY NOTICES:
+This software statically links to libclang from the LLVM project, 
+which is separately licensed under Apache 2.0 with LLVM exceptions.
+The original LLVM license text can be found at:
+https://llvm.org/LICENSE.txt
