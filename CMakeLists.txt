@@ -51,8 +51,6 @@ add_executable(RttrAutoRegister
     src/clangraii/clangDiagnostic.h
 )
 
-file(GLOB CLANG_LIBRARIES "${CMAKE_PREFIX_PATH}/lib/*.a")
-list(APPEND RTTR_LIBRARIES ${CLANG_LIBRARIES})
 list(APPEND RTTR_INCLUDES "${CMAKE_PREFIX_PATH}/include")
 
 if(APPLE)
@@ -62,16 +60,16 @@ if(APPLE)
     list(APPEND RTTR_LIBRARIES "${SECURITY}")
     find_library(ZLIB z)
     list(APPEND RTTR_LIBRARIES "${ZLIB}")
+    file(GLOB CLANG_LIBRARIES "${CMAKE_PREFIX_PATH}/lib/*.a")
+    list(APPEND RTTR_LIBRARIES ${CLANG_LIBRARIES})
+
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND strip "$<TARGET_FILE:${PROJECT_NAME}>"
+    COMMENT "Strip debug symbols done on final binary.")
 elseif (WIN32)
-    list(APPEND RTTR_LIBRARIES ${CMAKE_SOURCE_DIR}vendor/libclang/win/libclang.dll)
-    target_compile_definitions(clang_analyzer PRIVATE
-            _CRT_SECURE_NO_WARNINGS
-    )
+    file(GLOB CLANG_LIBRARIES "${CMAKE_PREFIX_PATH}/lib/libclang.lib")
+    list(APPEND RTTR_LIBRARIES ${CLANG_LIBRARIES})
 endif()
 
 target_include_directories(RttrAutoRegister PRIVATE ${RTTR_INCLUDES})
 target_link_libraries(RttrAutoRegister PRIVATE ${RTTR_LIBRARIES})
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND strip "$<TARGET_FILE:${PROJECT_NAME}>"
-    COMMENT "Strip debug symbols done on final binary.")
