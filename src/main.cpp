@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
         // 计算相对路径
         fs::path relative_path =
             fs::relative(header_file, output_file.parent_path());
-        parse_file_rel_path.push_back(relative_path);
+        parse_file_rel_path.push_back(relative_path.string());
         class_result.insert(class_result.end(), current_class_result.begin(),
                             current_class_result.end());
         enum_result.insert(enum_result.end(), current_enum_result.begin(),
