@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 
   CLI11_PARSE(app, argc, argv);
 
-  registerMacros.emplace_back("RTTR_AUTO_REGISTER");
+  registerMacros.emplace_back("RTTR_AUTO_REGISTER_CLASS");
   std::sort(registerMacros.begin(), registerMacros.end());
   auto last = std::unique(registerMacros.begin(), registerMacros.end());
   registerMacros.erase(last, registerMacros.end());

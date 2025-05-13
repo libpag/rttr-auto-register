@@ -283,12 +283,34 @@ void ParseRttrMarkClass(const std::vector<Token> &token_list,
           std::vector<std::string> methods;
         } elements;
 
-        // 遍历成员
         clang_visitChildren(
             cursor,
             [](CXCursor c, CXCursor parent, CXClientData data) {
               auto elements = static_cast<Elements *>(data);
+              CX_CXXAccessSpecifier access = clang_getCXXAccessSpecifier(c);
+              if (access == CX_CXXPrivate || access == CX_CXXProtected) {
+                return CXChildVisit_Continue;
+              }
               if (clang_getCursorKind(c) == CXCursor_FieldDecl) {
+                CXSourceRange range = clang_getCursorExtent(c);
+                CXToken* tokens = nullptr;
+                unsigned numTokens = 0;
+                clang_tokenize(clang_Cursor_getTranslationUnit(c), range, &tokens, &numTokens);
+
+                bool skip = false;
+                for (unsigned i = 0; i < numTokens; ++i) {
+                  ClangString tokenText(clang_getTokenSpelling(
+                        clang_Cursor_getTranslationUnit(c), tokens[i]));
+                  if (tokenText.str() == "RTTR_SKIP_REGISTER_PROPERTY") {
+                    skip = true;
+                    break;
+                  }
+                }
+                clang_disposeTokens(clang_Cursor_getTranslationUnit(c), tokens, numTokens);
+
+                if (skip) {
+                  return CXChildVisit_Continue;
+                }
                 CXType memberType = clang_getCursorType(c);
                 if (!isUnCopiedType(memberType)) {
                   ClangString memberName(clang_getCursorSpelling(c));
@@ -298,7 +320,6 @@ void ParseRttrMarkClass(const std::vector<Token> &token_list,
               if (clang_getCursorKind(c) == CXCursor_CXXMethod) {
                 ClangString name(clang_getCursorSpelling(c));
                 std::string methName = name.str();
-                // std::cout << "method: " << methName << std::endl;
                 if (methName.find("RTTRAUTOMARK") != std::string::npos) {
                   elements->methods.push_back(methName);
                 }
