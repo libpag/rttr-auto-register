@@ -24,17 +24,21 @@
 
 namespace Register {
 class ClangIndex {
-public:
-  ClangIndex() : index(clang_createIndex(0, 0)) {}
+ public:
+  ClangIndex() : index(clang_createIndex(0, 0)) {
+  }
   ~ClangIndex() {
-    if (index)
-      clang_disposeIndex(index);
+    if (index) clang_disposeIndex(index);
   }
 
-  operator CXIndex() const { return index; }
-  operator bool() const { return index != nullptr; }
+  operator CXIndex() const {
+    return index;
+  }
+  operator bool() const {
+    return index != nullptr;
+  }
 
-private:
+ private:
   CXIndex index;
 };
-} // namespace Register
+}  // namespace Register

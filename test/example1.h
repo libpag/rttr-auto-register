@@ -18,12 +18,32 @@
 
 #pragma once
 
-#include <rttrGeneratorMacro.h>
+#include "defines.h"
 
-struct foo {
-  REGISTER_CLASS()
-  REGISTER_PROPERTY
-  int bar;
-  REGISTER_PROPERTY_READONLY
-  int *bar_pointer;
+enum class RTTR_AUTO_REGISTER_CLASS RttrAutoRegisterTestEnum {
+  TestEnum1,
+  TestEnum2,
+  TestEnum3,
+  TestEnum4
+};
+
+struct RTTR_AUTO_REGISTER_CLASS RttrAutoRegisterTestStruct {
+  int a;
+  int b;
+  int RTTR_SKIP_REGISTER_PROPERTY c;
+};
+
+class RTTR_AUTO_REGISTER_CLASS RttrAutoRegisterTestClass5 {
+ public:
+  int getA();
+  int getB();
+  int getC();
+  RTTR_REGISTER_FUNCTION_AS_PROPERTY("a", getA)
+  RTTR_REGISTER_FUNCTION_AS_PROPERTY("b", getB)
+  RTTR_REGISTER_FUNCTION_AS_PROPERTY("c", getC)
+
+ private:
+  int a;
+  int b;
+  int c;
 };

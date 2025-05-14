@@ -26,15 +26,22 @@
 
 namespace Register {
 class ClangString {
-public:
-  explicit ClangString(CXString str) : str_(str) {}
-  ~ClangString() { clang_disposeString(str_); }
+ public:
+  explicit ClangString(CXString str) : str_(str) {
+  }
+  ~ClangString() {
+    clang_disposeString(str_);
+  }
 
-  std::string str() const { return std::string(clang_getCString(str_)); }
+  std::string str() const {
+    return std::string(clang_getCString(str_));
+  }
 
-  operator std::string() const { return str(); }
+  operator std::string() const {
+    return str();
+  }
 
-private:
+ private:
   CXString str_;
 };
-} // namespace Register
+}  // namespace Register

@@ -21,15 +21,15 @@
 
 #pragma once
 
-#include "clangraii/clangIndex.h"
-#include "clangraii/clangString.h"
-#include "clangraii/translationUnit.h"
 #include <clang-c/Index.h>
 #include <cstring>
 #include <filesystem>
 #include <optional>
 #include <set>
 #include <unordered_map>
+#include "clangraii/clangIndex.h"
+#include "clangraii/clangString.h"
+#include "clangraii/translationUnit.h"
 
 namespace Register {
 
@@ -57,7 +57,7 @@ struct Token {
   std::string spelling;
   CXCursor cursor;
 
-  bool isIdentifier(const std::string &id) const {
+  bool isIdentifier(const std::string& id) const {
     return kind == CXToken_Identifier && spelling == id;
   }
 
@@ -66,44 +66,39 @@ struct Token {
   }
 };
 
-std::shared_ptr<TranslationUnit>
-GetTranslationUnit(ClangIndex &index, const std::string &filepath,
-                   const std::vector<const char *> &args);
+std::shared_ptr<TranslationUnit> GetTranslationUnit(ClangIndex& index, const std::string& filepath,
+                                                    const std::vector<const char*>& args);
 
 std::string GetFullQualifiedName(CXCursor cursor);
 
-std::optional<CXCursor> FindNextMember(const std::vector<Token> &tokens,
-                                       size_t startIndex, CXCursorKind kind);
+std::optional<CXCursor> FindNextMember(const std::vector<Token>& tokens, size_t startIndex,
+                                       CXCursorKind kind);
 
-std::vector<std::string> ProcessProperty(CXCursor cursor,
-                                         const std::string &property_macro,
+std::vector<std::string> ProcessProperty(CXCursor cursor, const std::string& property_macro,
                                          CXCursorKind kind);
 
-std::vector<Token> GenerateTokenList(TranslationUnit &tu);
+std::vector<Token> GenerateTokenList(TranslationUnit& tu);
 
-void ParseRttrMarkClass(const std::vector<Token> &token_list,
-                        const std::vector<std::string> &registerMacros,
-                        std::vector<RTTRMarkClassInfo> &classInfos,
-                        std::vector<RTTRMarkEnumInfo> &enumInfos);
+void ParseRttrMarkClass(const std::vector<Token>& token_list,
+                        const std::vector<std::string>& registerMacros,
+                        std::vector<RTTRMarkClassInfo>& classInfos,
+                        std::vector<RTTRMarkEnumInfo>& enumInfos);
 
-void GenerateCPPCode(const std::vector<RTTRMarkClassInfo> &classInfos,
-                     const std::vector<RTTRMarkEnumInfo> &enumInfos,
-                     const std::string &outputFile,
-                     const std::vector<std::string> &relativePaths);
+void GenerateCPPCode(const std::vector<RTTRMarkClassInfo>& classInfos,
+                     const std::vector<RTTRMarkEnumInfo>& enumInfos, const std::string& outputFile,
+                     const std::vector<std::string>& relativePaths);
 
-void GetHeaderFiles(const std::filesystem::path &dir,
-                    std::vector<std::string> &files);
+void GetHeaderFiles(const std::filesystem::path& dir, std::vector<std::string>& files);
 
-void GetForwardDecl(
-    TranslationUnit &tu,
-    std::unordered_map<std::string, Register::ForwardDeclInfo> &map);
+void GetForwardDecl(TranslationUnit& tu,
+                    std::unordered_map<std::string, Register::ForwardDeclInfo>& map);
 
-void GetClassDefHeaderFileList(
-    TranslationUnit &tu, std::unordered_map<std::string, std::string> &DefList);
-void GetForwardDeclDefPath(
-    const std::unordered_map<std::string, std::string> &DefList,
-    std::vector<std::string> &path);
+void GetClassDefHeaderFileList(TranslationUnit& tu,
+                               std::unordered_map<std::string, std::string>& DefList);
+void GetForwardDeclDefPath(const std::unordered_map<std::string, std::string>& DefList,
+                           std::vector<std::string>& path);
 CXType getUnderlyingType(CXType type);
 bool typeIsDefined(CXType type);
 void printDiagnostics(CXTranslationUnit translationUnit);
-} // namespace Register
+
+}  // namespace Register

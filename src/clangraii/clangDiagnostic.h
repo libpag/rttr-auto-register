@@ -25,13 +25,18 @@
 
 namespace Register {
 class ClangDiagnostic {
-public:
-  explicit ClangDiagnostic(CXDiagnostic diag) : diag_(diag) {}
-  ~ClangDiagnostic() { clang_disposeDiagnostic(diag_); }
+ public:
+  explicit ClangDiagnostic(CXDiagnostic diag) : diag_(diag) {
+  }
+  ~ClangDiagnostic() {
+    clang_disposeDiagnostic(diag_);
+  }
 
-  operator CXDiagnostic() const { return diag_; }
+  operator CXDiagnostic() const {
+    return diag_;
+  }
 
-private:
+ private:
   CXDiagnostic diag_;
 };
-} // namespace Register
+}  // namespace Register

@@ -27,9 +27,9 @@
 
 namespace Register {
 class TranslationUnit {
-public:
-  TranslationUnit(CXIndex index, const std::string &filename,
-                  const std::vector<const char *> &args) {
+ public:
+  TranslationUnit(CXIndex index, const std::string& filename,
+                  const std::vector<const char*>& args) {
 
     tu_ = clang_parseTranslationUnit(index, filename.c_str(), args.data(),
                                      static_cast<int>(args.size()), nullptr, 0,
@@ -37,14 +37,17 @@ public:
   }
 
   ~TranslationUnit() {
-    if (tu_)
-      clang_disposeTranslationUnit(tu_);
+    if (tu_) clang_disposeTranslationUnit(tu_);
   }
 
-  operator CXTranslationUnit() const { return tu_; }
-  explicit operator bool() const { return tu_ != nullptr; }
+  operator CXTranslationUnit() const {
+    return tu_;
+  }
+  explicit operator bool() const {
+    return tu_ != nullptr;
+  }
 
-private:
+ private:
   CXTranslationUnit tu_ = nullptr;
 };
-} // namespace Register
+}  // namespace Register

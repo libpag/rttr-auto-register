@@ -20,20 +20,18 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "register.h"
-#include "clangraii/clangDiagnostic.h"
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <sstream>
+#include "clangraii/clangDiagnostic.h"
 
 namespace Register {
 
 static std::set<std::string> undefinedTypeList;
-std::shared_ptr<TranslationUnit>
-GetTranslationUnit(ClangIndex &index, const std::string &filepath,
-                   const std::vector<const char *> &args) {
-  std::shared_ptr<TranslationUnit> tu =
-      std::make_shared<TranslationUnit>(index, filepath, args);
+std::shared_ptr<TranslationUnit> GetTranslationUnit(ClangIndex& index, const std::string& filepath,
+                                                    const std::vector<const char*>& args) {
+  std::shared_ptr<TranslationUnit> tu = std::make_shared<TranslationUnit>(index, filepath, args);
   if (!(*tu)) {
     std::cerr << "Failed to parse file: " << filepath << std::endl;
     return nullptr;
@@ -55,8 +53,7 @@ std::string GetFullQualifiedName(CXCursor cursor) {
 
   // 处理当前cursor
   CXCursorKind kind = clang_getCursorKind(cursor);
-  if (kind == CXCursor_ClassDecl || kind == CXCursor_StructDecl ||
-      kind == CXCursor_EnumDecl) {
+  if (kind == CXCursor_ClassDecl || kind == CXCursor_StructDecl || kind == CXCursor_EnumDecl) {
     add_cursor_name(cursor);
   }
 
@@ -65,8 +62,7 @@ std::string GetFullQualifiedName(CXCursor cursor) {
   while (!clang_Cursor_isNull(parent)) {
     CXCursorKind parent_kind = clang_getCursorKind(parent);
 
-    if (parent_kind == CXCursor_Namespace ||
-        parent_kind == CXCursor_ClassDecl ||
+    if (parent_kind == CXCursor_Namespace || parent_kind == CXCursor_ClassDecl ||
         parent_kind == CXCursor_StructDecl) {
 
       ClangString parent_spelling(clang_getCursorSpelling(parent));
@@ -95,10 +91,10 @@ std::string GetFullQualifiedName(CXCursor cursor) {
   return result;
 }
 
-std::optional<CXCursor> FindNextMember(const std::vector<Token> &tokens,
-                                       size_t startIndex, CXCursorKind kind) {
+std::optional<CXCursor> FindNextMember(const std::vector<Token>& tokens, size_t startIndex,
+                                       CXCursorKind kind) {
   for (size_t i = startIndex + 1; i < tokens.size(); ++i) {
-    const Token &token = tokens[i];
+    const Token& token = tokens[i];
 
     if (token.isCommentOrPunctuation()) {
       continue;
@@ -115,13 +111,12 @@ std::optional<CXCursor> FindNextMember(const std::vector<Token> &tokens,
   return std::nullopt;
 }
 
-std::vector<std::string> ProcessProperty(CXCursor cursor,
-                                         const std::string &property_macro,
+std::vector<std::string> ProcessProperty(CXCursor cursor, const std::string& property_macro,
                                          CXCursorKind kind) {
   std::vector<std::string> result;
 
   // 获取token范围
-  CXToken *tokens = nullptr;
+  CXToken* tokens = nullptr;
   unsigned num_tokens = 0;
   CXSourceRange range = clang_getCursorExtent(cursor);
   CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
@@ -135,14 +130,13 @@ std::vector<std::string> ProcessProperty(CXCursor cursor,
     CXCursor token_cursor;
     clang_annotateTokens(tu, &token, 1, &token_cursor);
 
-    token_list.push_back(
-        {clang_getTokenKind(token), ClangString(spelling).str(), token_cursor});
+    token_list.push_back({clang_getTokenKind(token), ClangString(spelling).str(), token_cursor});
   }
   clang_disposeTokens(tu, tokens, num_tokens);
 
   // 处理token
   for (size_t i = 0; i < token_list.size(); ++i) {
-    const Token &token = token_list[i];
+    const Token& token = token_list[i];
 
     // 查找属性宏
     if (token.isIdentifier(property_macro) && i + 1 < token_list.size()) {
@@ -166,43 +160,39 @@ bool isUnCopiedType(CXType type) {
   // std::cout << "type: " << str << std::endl;
 
   // 检查类型名中是否包含"std::unique_ptr"或"unique_ptr"
-  bool isUniquePtr = str.find("unique") != std::string::npos ||
-                     str.find("Unique") != std::string::npos;
+  bool isUniquePtr =
+      str.find("unique") != std::string::npos || str.find("Unique") != std::string::npos;
   bool isMutex = str.find("mutex") != std::string::npos;
   bool isAtomic = str.find("atomic") != std::string::npos;
   bool isUnNamed = str.find("unname") != std::string::npos;
   return isUniquePtr || isMutex || isAtomic || isUnNamed;
 }
 
-CXChildVisitResult visitor(CXCursor cursor, CXCursor parent,
-                           CXClientData client_data) {
+CXChildVisitResult visitor(CXCursor cursor, CXCursor parent, CXClientData client_data) {
   if (clang_getCursorKind(cursor) == CXCursor_StructDecl) {
     ClangString cursorName(clang_getCursorSpelling(cursor));
 
     // 检查是否有pag_api宏
     CXSourceRange range = clang_getCursorExtent(cursor);
-    CXToken *tokens;
+    CXToken* tokens;
     unsigned numTokens;
-    clang_tokenize(clang_Cursor_getTranslationUnit(cursor), range, &tokens,
-                   &numTokens);
+    clang_tokenize(clang_Cursor_getTranslationUnit(cursor), range, &tokens, &numTokens);
 
     bool hasPagApi = false;
     for (unsigned i = 0; i < numTokens; ++i) {
       if (clang_getTokenKind(tokens[i]) == CXToken_Identifier) {
-        ClangString tokenText(clang_getTokenSpelling(
-            clang_Cursor_getTranslationUnit(cursor), tokens[i]));
+        ClangString tokenText(
+            clang_getTokenSpelling(clang_Cursor_getTranslationUnit(cursor), tokens[i]));
         if (tokenText.str() == "pag_api") {
           hasPagApi = true;
           break;
         }
       }
     }
-    clang_disposeTokens(clang_Cursor_getTranslationUnit(cursor), tokens,
-                        numTokens);
+    clang_disposeTokens(clang_Cursor_getTranslationUnit(cursor), tokens, numTokens);
 
     if (hasPagApi) {
-      std::cout << "Found pag_api marked struct: " << cursorName.str()
-                << std::endl;
+      std::cout << "Found pag_api marked struct: " << cursorName.str() << std::endl;
       std::string qualified_name = GetFullQualifiedName(cursor);
       std::cout << "qualified_name: " << qualified_name << std::endl;
 
@@ -217,8 +207,8 @@ CXChildVisitResult visitor(CXCursor cursor, CXCursor parent,
                 if (!isUnCopiedType(memberType)) {
                   ClangString memberName(clang_getCursorSpelling(c));
                   ClangString typeName(clang_getTypeSpelling(memberType));
-                  std::cout << "  Member: " << memberName.str()
-                            << " (type: " << typeName.str() << ")" << std::endl;
+                  std::cout << "  Member: " << memberName.str() << " (type: " << typeName.str()
+                            << ")" << std::endl;
                 }
               }
             }
@@ -230,12 +220,12 @@ CXChildVisitResult visitor(CXCursor cursor, CXCursor parent,
   return CXChildVisit_Continue;
 }
 
-std::vector<Token> GenerateTokenList(TranslationUnit &tu) {
+std::vector<Token> GenerateTokenList(TranslationUnit& tu) {
   // 获取翻译单元的游标
   CXCursor tu_cursor = clang_getTranslationUnitCursor(tu);
 
   // 获取token范围
-  CXToken *tokens = nullptr;
+  CXToken* tokens = nullptr;
   unsigned num_tokens = 0;
   CXSourceRange range = clang_getCursorExtent(tu_cursor);
   clang_tokenize(tu, range, &tokens, &num_tokens);
@@ -248,22 +238,53 @@ std::vector<Token> GenerateTokenList(TranslationUnit &tu) {
     CXCursor token_cursor;
     clang_annotateTokens(tu, &token, 1, &token_cursor);
 
-    token_list.push_back(
-        {clang_getTokenKind(token), ClangString(spelling).str(), token_cursor});
+    token_list.push_back({clang_getTokenKind(token), ClangString(spelling).str(), token_cursor});
   }
   clang_disposeTokens(tu, tokens, num_tokens);
   return token_list;
 }
 
-void ParseRttrMarkClass(const std::vector<Token> &token_list,
-                        const std::vector<std::string> &registerMacros,
-                        std::vector<RTTRMarkClassInfo> &classInfos,
-                        std::vector<RTTRMarkEnumInfo> &enumInfos) {
-  // 处理token
+void ParseRttrMarkClass(const std::vector<Token>& token_list,
+                        const std::vector<std::string>& registerMacros,
+                        std::vector<RTTRMarkClassInfo>& classInfos,
+                        std::vector<RTTRMarkEnumInfo>& enumInfos) {
+  std::vector<std::pair<std::string, std::string>> propertyFromFunctions;
+  for (size_t i = 0; i < token_list.size(); i++) {
+    const Token& token = token_list[i];
+    if (token.spelling == "RTTR_REGISTER_FUNCTION_AS_PROPERTY") {
+      if (i != 0) {
+        const Token& defineToken = token_list[i - 1];
+        if (defineToken.spelling == "define") {
+          continue;
+        }
+      }
+      if (i + 5 < token_list.size()) {
+        const Token& leftParentheses = token_list[i + 1];
+        const Token& property = token_list[i + 2];
+        const Token& function = token_list[i + 4];
+        const Token& rightParentheses = token_list[i + 5];
+        if (leftParentheses.spelling != "(" || rightParentheses.spelling != ")") {
+          continue;
+        }
+        std::string propertyName = property.spelling;
+        if (!propertyName.empty()) {
+          if (propertyName.front() == '"') {
+            propertyName.erase(0, 1);
+          }
+          if (propertyName.back() == '"') {
+            propertyName.pop_back();
+          }
+        }
+        propertyFromFunctions.emplace_back(propertyName, function.spelling);
+      }
+    }
+  }
+
   for (size_t i = 0; i < token_list.size(); ++i) {
-    const Token &token = token_list[i];
+    const Token& token = token_list[i];
     bool identifierMatch = false;
-    for (const auto &macro : registerMacros) {
+
+    for (const auto& macro : registerMacros) {
       if (token.spelling == macro) {
         identifierMatch = true;
         break;
@@ -283,54 +304,65 @@ void ParseRttrMarkClass(const std::vector<Token> &token_list,
           std::vector<std::string> methods;
         } elements;
 
-        clang_visitChildren(
-            cursor,
-            [](CXCursor c, CXCursor parent, CXClientData data) {
-              auto elements = static_cast<Elements *>(data);
-              CX_CXXAccessSpecifier access = clang_getCXXAccessSpecifier(c);
-              if (access == CX_CXXPrivate || access == CX_CXXProtected) {
-                return CXChildVisit_Continue;
-              }
-              if (clang_getCursorKind(c) == CXCursor_FieldDecl) {
-                CXSourceRange range = clang_getCursorExtent(c);
-                CXToken* tokens = nullptr;
-                unsigned numTokens = 0;
-                clang_tokenize(clang_Cursor_getTranslationUnit(c), range, &tokens, &numTokens);
+        struct VisitorData {
+          Elements* elements;
+          const std::vector<std::pair<std::string, std::string>>& propertyFromFunctions;
+        };
+        VisitorData visitorData = {&elements, propertyFromFunctions};
 
-                bool skip = false;
-                for (unsigned i = 0; i < numTokens; ++i) {
-                  ClangString tokenText(clang_getTokenSpelling(
-                        clang_Cursor_getTranslationUnit(c), tokens[i]));
-                  if (tokenText.str() == "RTTR_SKIP_REGISTER_PROPERTY") {
-                    skip = true;
-                    break;
-                  }
-                }
-                clang_disposeTokens(clang_Cursor_getTranslationUnit(c), tokens, numTokens);
+        CXCursorVisitor visitfunc =
+            [](CXCursor c, CXCursor parent, CXClientData data) -> enum CXChildVisitResult {
+          auto visitorData = static_cast<VisitorData*>(data);
+          auto elements = visitorData->elements;
+          const auto& propertyFromFunctions = visitorData->propertyFromFunctions;
+          CX_CXXAccessSpecifier access = clang_getCXXAccessSpecifier(c);
+          if (access == CX_CXXPrivate || access == CX_CXXProtected) {
+            return CXChildVisit_Continue;
+          }
+          if (clang_getCursorKind(c) == CXCursor_FieldDecl) {
+            CXSourceRange range = clang_getCursorExtent(c);
+            CXToken* tokens = nullptr;
+            unsigned numTokens = 0;
+            clang_tokenize(clang_Cursor_getTranslationUnit(c), range, &tokens, &numTokens);
 
-                if (skip) {
-                  return CXChildVisit_Continue;
-                }
-                CXType memberType = clang_getCursorType(c);
-                if (!isUnCopiedType(memberType)) {
-                  ClangString memberName(clang_getCursorSpelling(c));
-                  elements->properties.push_back(memberName);
-                }
+            bool skip = false;
+            for (unsigned i = 0; i < numTokens; ++i) {
+              ClangString tokenText(
+                  clang_getTokenSpelling(clang_Cursor_getTranslationUnit(c), tokens[i]));
+              if (tokenText.str() == "RTTR_SKIP_REGISTER_PROPERTY") {
+                skip = true;
+                break;
               }
-              if (clang_getCursorKind(c) == CXCursor_CXXMethod) {
-                ClangString name(clang_getCursorSpelling(c));
-                std::string methName = name.str();
-                if (methName.find("RTTRAUTOMARK") != std::string::npos) {
-                  elements->methods.push_back(methName);
-                }
-              }
+            }
+            clang_disposeTokens(clang_Cursor_getTranslationUnit(c), tokens, numTokens);
+
+            if (skip) {
               return CXChildVisit_Continue;
-            },
-            &elements);
+            }
+            CXType memberType = clang_getCursorType(c);
+            if (!isUnCopiedType(memberType)) {
+              ClangString memberName(clang_getCursorSpelling(c));
+              elements->properties.push_back(memberName);
+            }
+          } else if (clang_getCursorKind(c) == CXCursor_CXXMethod) {
+            ClangString name(clang_getCursorSpelling(c));
+            std::string methName = name.str();
+            if (methName.find("RTTRAUTOMARK") != std::string::npos) {
+              elements->methods.push_back(methName);
+            } else {
+              for (const auto& pair : propertyFromFunctions) {
+                if (methName == pair.second) {
+                  elements->methods.push_back(pair.first + "|" + pair.second);
+                }
+              }
+            }
+          }
+          return CXChildVisit_Continue;
+        };
 
-        classInfos.push_back({name, qualified_name,
-                              std::move(elements.properties),
-                              std::move(elements.methods)});
+        clang_visitChildren(cursor, visitfunc, &visitorData);
+        classInfos.push_back(
+            {name, qualified_name, std::move(elements.properties), std::move(elements.methods)});
       } else if (kind == CXCursor_EnumDecl) {
         // 获取枚举名
         ClangString name(clang_getCursorSpelling(cursor));
@@ -343,15 +375,13 @@ void ParseRttrMarkClass(const std::vector<Token> &token_list,
             cursor,
             [](CXCursor c, CXCursor parent, CXClientData client_data) {
               if (clang_getCursorKind(c) == CXCursor_EnumConstantDecl) {
-                auto elements =
-                    static_cast<std::vector<std::string> *>(client_data);
+                auto elements = static_cast<std::vector<std::string>*>(client_data);
                 ClangString spelling(clang_getCursorSpelling(c));
                 elements->push_back(spelling);
               }
               return CXChildVisit_Continue;
             },
             &elements);
-
         enumInfos.push_back({name, qualified_name, std::move(elements)});
       }
     }
@@ -360,21 +390,18 @@ void ParseRttrMarkClass(const std::vector<Token> &token_list,
 
 std::string removeRttrSuffix(std::string str) {
   const std::string suffix = "RTTRAUTOMARK";
-  if (str.size() >= suffix.size() &&
-      str.substr(str.size() - suffix.size()) == suffix) {
+  if (str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix) {
     return str.substr(0, str.size() - suffix.size());
   }
   return str;
 }
 
-void GenerateCPPCode(const std::vector<RTTRMarkClassInfo> &classInfos,
-                     const std::vector<RTTRMarkEnumInfo> &enumInfos,
-                     const std::string &outputFile,
-                     const std::vector<std::string> &relativePaths) {
+void GenerateCPPCode(const std::vector<RTTRMarkClassInfo>& classInfos,
+                     const std::vector<RTTRMarkEnumInfo>& enumInfos, const std::string& outputFile,
+                     const std::vector<std::string>& relativePaths) {
   std::ofstream f(outputFile);
   if (!f.is_open()) {
-    std::cerr << "Error: Could not open file " << outputFile << " for writing"
-              << std::endl;
+    std::cerr << "Error: Could not open file " << outputFile << " for writing" << std::endl;
     return;
   }
 
@@ -383,51 +410,52 @@ void GenerateCPPCode(const std::vector<RTTRMarkClassInfo> &classInfos,
   f << "#pragma once\n";
   f << "#include <rttr/registration.h>\n";
   f << "#include <iostream>\n";
-  for (const std::string &relativePath : relativePaths) {
+  for (const std::string& relativePath : relativePaths) {
     f << "#include \"" << relativePath << "\"\n";
   }
-  f << "using namespace rttr;\n\n";
-  f << "\n\n\n";
+  f << "\n";
   f << "RTTR_REGISTRATION\n";
   f << "{\n";
-  f << "  using namespace rttr;\n\n";
-  f << "  std::cout << \"Rttr registed!\" << std::endl;\n\n";
+  f << "\tusing namespace rttr;\n\n";
+  f << "\tstd::cout << \"Rttr registed!\" << std::endl;\n\n";
 
   // 生成类注册代码
-  for (const auto &info : classInfos) {
-    f << "  registration::class_<" << info.path << ">(\"" << info.className
-      << "\")";
+  for (const auto& info : classInfos) {
+    f << "\tregistration::class_<" << info.path << ">(\"" << info.className << "\")";
 
     // 处理普通属性
-    for (const auto &prop : info.properties) {
-      f << "\n      .property_readonly(\"" << prop << "\", &" << info.path
-        << "::" << prop << ")";
+    for (const auto& prop : info.properties) {
+      f << "\n\t\t.property(\"" << prop << "\", &" << info.path << "::" << prop << ")";
     }
 
     // 处理方法
-    for (const auto &method : info.methods) {
-      f << "\n      .method(\"" << removeRttrSuffix(method) << "\", &"
-        << info.path << "::" << method << ")";
+    for (const auto& method : info.methods) {
+      if (method.find('|') != std::string::npos) {
+        std::string property = method.substr(0, method.find('|'));
+        std::string function = method.substr(method.find('|') + 1);
+        f << "\n\t\t.property_readonly(\"" << removeRttrSuffix(property) << "\", &" << info.path
+          << "::" << function << ")";
+      } else {
+        f << "\n\t\t.method(\"" << removeRttrSuffix(method) << "\", &" << info.path
+          << "::" << method << ")";
+      }
     }
 
     f << ";\n\n";
   }
 
   // 生成枚举注册代码
-  for (const auto &info : enumInfos) {
-    f << "  registration::enumeration<" << info.path << ">(\"" << info.enumName
-      << "\")";
+  for (const auto& info : enumInfos) {
+    f << "\tregistration::enumeration<" << info.path << ">(\"" << info.enumName << "\")";
     f << "\n     (";
 
     // 处理枚举值
     for (size_t i = 0; i < info.elements.size(); ++i) {
-      const auto &elem = info.elements[i];
+      const auto& elem = info.elements[i];
       if (i == info.elements.size() - 1) {
-        f << "\n            value(\"" << elem << "\", " << info.path
-          << "::" << elem << ")";
+        f << "\n\t\tvalue(\"" << elem << "\", " << info.path << "::" << elem << ")";
       } else {
-        f << "\n            value(\"" << elem << "\", " << info.path
-          << "::" << elem << "),";
+        f << "\n\t\tvalue(\"" << elem << "\", " << info.path << "::" << elem << "),";
       }
     }
 
@@ -439,29 +467,32 @@ void GenerateCPPCode(const std::vector<RTTRMarkClassInfo> &classInfos,
   f.close();
 }
 
-void GetHeaderFiles(const std::filesystem::path &dir,
-                    std::vector<std::string> &files) {
-  for (const auto &entry : std::filesystem::recursive_directory_iterator(dir)) {
-    if (entry.is_regular_file() && entry.path().extension() == ".h") {
+void GetHeaderFiles(const std::filesystem::path& dir, std::vector<std::string>& files) {
+  if (!std::filesystem::is_directory(dir) && dir.string().find(".h") != std::string::npos) {
+    files.push_back(dir.string());
+    return;
+  }
+  for (const auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
+    if (entry.is_regular_file() && (entry.path().extension() == ".h" || entry.path().extension() == ".hpp")) {
       files.push_back(entry.path().string());
     }
   }
 }
 
-std::vector<std::string> splitBySemicolon(const std::string &str) {
+std::vector<std::string> splitBySemicolon(const std::string& str) {
   std::vector<std::string> tokens;
   std::stringstream ss(str);
   std::string token;
   while (std::getline(ss, token, ';')) {
-    if (!token.empty()) { // 过滤空字符串
+    if (!token.empty()) {  // 过滤空字符串
       tokens.push_back(token);
     }
   }
   return tokens;
 }
-void GetForwardDecl(
-    TranslationUnit &tu,
-    std::unordered_map<std::string, Register::ForwardDeclInfo> &map) {
+
+void GetForwardDecl(TranslationUnit& tu,
+                    std::unordered_map<std::string, Register::ForwardDeclInfo>& map) {
   if (!tu) {
     return;
   }
@@ -471,9 +502,8 @@ void GetForwardDecl(
   clang_visitChildren(
       tu_cursor,
       [](CXCursor cursor, CXCursor parent, CXClientData client_data) {
-        auto map = static_cast<
-            std::unordered_map<std::string, Register::ForwardDeclInfo> *>(
-            client_data);
+        auto map =
+            static_cast<std::unordered_map<std::string, Register::ForwardDeclInfo>*>(client_data);
         CXCursorKind kind = clang_getCursorKind(cursor);
         // 判断是否为类或结构体的前向声明
         if (kind == CXCursor_ClassDecl || kind == CXCursor_StructDecl) {
@@ -491,9 +521,8 @@ void GetForwardDecl(
       &map);
 }
 
-void GetClassDefHeaderFileList(
-    TranslationUnit &tu,
-    std::unordered_map<std::string, std::string> &DefList) {
+void GetClassDefHeaderFileList(TranslationUnit& tu,
+                               std::unordered_map<std::string, std::string>& DefList) {
   if (!tu) {
     return;
   }
@@ -502,9 +531,7 @@ void GetClassDefHeaderFileList(
   clang_visitChildren(
       tu_cursor,
       [](CXCursor cursor, CXCursor parent, CXClientData client_data) {
-        auto DefList =
-            static_cast<std::unordered_map<std::string, std::string> *>(
-                client_data);
+        auto DefList = static_cast<std::unordered_map<std::string, std::string>*>(client_data);
         CXCursorKind kind = clang_getCursorKind(cursor);
         // 判断是否为类或结构体的前向声明
         if (kind == CXCursor_ClassDecl || kind == CXCursor_StructDecl) {
@@ -530,7 +557,7 @@ CXType getUnderlyingType(CXType type) {
   if (clang_Type_getNumTemplateArguments(type) > 0) {
     // 常见容器和智能指针检查
     CXString typeName = clang_getTypeSpelling(type);
-    const char *name = clang_getCString(typeName);
+    const char* name = clang_getCString(typeName);
 
     // 检查是否是标准库容器或智能指针
     if (strstr(name, "std::vector") || strstr(name, "std::list") ||
@@ -541,7 +568,7 @@ CXType getUnderlyingType(CXType type) {
       CXType templateArg = clang_Type_getTemplateArgumentAsType(type, 0);
       if (templateArg.kind != CXType_Invalid) {
         clang_disposeString(typeName);
-        return getUnderlyingType(templateArg); // 递归处理嵌套情况
+        return getUnderlyingType(templateArg);  // 递归处理嵌套情况
       }
     }
     clang_disposeString(typeName);
@@ -551,11 +578,12 @@ CXType getUnderlyingType(CXType type) {
       type.kind == CXType_RValueReference) {
     CXType pointee = clang_getPointeeType(type);
     if (pointee.kind != CXType_Invalid) {
-      return getUnderlyingType(pointee); // 递归处理
+      return getUnderlyingType(pointee);  // 递归处理
     }
   }
   return clang_Type_getNamedType(type);
 }
+
 bool typeIsDefined(CXType type) {
   if (type.kind == CXType_Record) {
     auto del_cursor = clang_getTypeDeclaration(type);
@@ -566,6 +594,7 @@ bool typeIsDefined(CXType type) {
   }
   return true;
 }
+
 void printDiagnostics(CXTranslationUnit translationUnit) {
   int nbDiag = clang_getNumDiagnostics(translationUnit);
   printf("There are %i diagnostics:\n", nbDiag);
@@ -573,8 +602,8 @@ void printDiagnostics(CXTranslationUnit translationUnit) {
   bool foundError = false;
   for (unsigned int currentDiag = 0; currentDiag < nbDiag; ++currentDiag) {
     CXDiagnostic diagnotic = clang_getDiagnostic(translationUnit, currentDiag);
-    CXString errorString = clang_formatDiagnostic(
-        diagnotic, clang_defaultDiagnosticDisplayOptions());
+    CXString errorString =
+        clang_formatDiagnostic(diagnotic, clang_defaultDiagnosticDisplayOptions());
     std::string tmp{clang_getCString(errorString)};
     clang_disposeString(errorString);
     if (tmp.find("error:") != std::string::npos) {
@@ -587,4 +616,5 @@ void printDiagnostics(CXTranslationUnit translationUnit) {
     exit(-1);
   }
 }
-} // namespace Register
+
+}  // namespace Register
