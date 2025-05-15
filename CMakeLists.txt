@@ -70,8 +70,15 @@ if(APPLE)
     COMMAND strip "$<TARGET_FILE:${PROJECT_NAME}>"
     COMMENT "Strip debug symbols done on final binary.")
 elseif (WIN32)
-    file(GLOB CLANG_LIBRARIES "${CMAKE_PREFIX_PATH}/lib/libclang.lib")
+    file(GLOB CLANG_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libclang/win/lib/libclang.lib")
     list(APPEND RTTR_LIBRARIES ${CLANG_LIBRARIES})
+    add_custom_command(TARGET RttrAutoRegister POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libclang/win/lib/libclang.dll
+            $<TARGET_FILE_DIR:RttrAutoRegister>/libclang.dll
+            COMMENT "正在复制文件..."
+            VERBATIM
+    )
 endif()
 
 target_include_directories(RttrAutoRegister PRIVATE ${RTTR_INCLUDES})
