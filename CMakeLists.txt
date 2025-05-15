@@ -40,7 +40,7 @@ if (NOT CMAKE_PREFIX_PATH)
     set(CMAKE_PREFIX_PATH "")
 endif()
 
-add_executable(RttrAutoRegister
+set(RTTR_SOURCE_FILES 
     src/main.cpp
     src/register.h
     src/register.cpp
@@ -51,7 +51,9 @@ add_executable(RttrAutoRegister
     src/clangraii/clangDiagnostic.h
 )
 
-list(APPEND RTTR_INCLUDES "${CMAKE_PREFIX_PATH}/include")
+list(APPEND RTTR_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libclang/include")
+
+add_executable(RttrAutoRegister ${RTTR_SOURCE_FILES})
 
 if(APPLE)
     find_library(COREFOUNDATION CoreFoundation)
@@ -60,7 +62,8 @@ if(APPLE)
     list(APPEND RTTR_LIBRARIES "${SECURITY}")
     find_library(ZLIB z)
     list(APPEND RTTR_LIBRARIES "${ZLIB}")
-    file(GLOB CLANG_LIBRARIES "${CMAKE_PREFIX_PATH}/lib/*.a")
+    execute_process(COMMAND bash -c "unzip ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libclang/mac/lib/libclang.a.zip -d ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libclang/mac/lib")
+    file(GLOB CLANG_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libclang/mac/lib/libclang.a")
     list(APPEND RTTR_LIBRARIES ${CLANG_LIBRARIES})
 
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
