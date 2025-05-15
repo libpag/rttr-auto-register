@@ -399,6 +399,16 @@ std::string removeRttrSuffix(std::string str) {
 void GenerateCPPCode(const std::vector<RTTRMarkClassInfo>& classInfos,
                      const std::vector<RTTRMarkEnumInfo>& enumInfos, const std::string& outputFile,
                      const std::vector<std::string>& relativePaths) {
+  std::filesystem::path outputPath(outputFile);
+  std::filesystem::path dirPath = outputPath.parent_path();
+
+  if (!dirPath.empty() && !std::filesystem::exists(dirPath)) {
+    if (!std::filesystem::create_directories(dirPath)) {
+      std::cerr << "Error: Failed to create directory " << dirPath << std::endl;
+      return;
+    }
+  }
+
   std::ofstream f(outputFile);
   if (!f.is_open()) {
     std::cerr << "Error: Could not open file " << outputFile << " for writing" << std::endl;
@@ -425,7 +435,7 @@ void GenerateCPPCode(const std::vector<RTTRMarkClassInfo>& classInfos,
 
     // 处理普通属性
     for (const auto& prop : info.properties) {
-      f << "\n\t\t.property(\"" << prop << "\", &" << info.path << "::" << prop << ")";
+      f << "\n\t\t.property_readonly(\"" << prop << "\", &" << info.path << "::" << prop << ")";
     }
 
     // 处理方法
